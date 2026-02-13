@@ -53,16 +53,88 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true);
-        const res = await fetch('/api/canton');
-        if (!res.ok) throw new Error('Failed to fetch Canton data');
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
         
-        setLiveRound(data.round);
+        // Fetch round info
+        const roundRes = await fetch('https://scan.canton.global.digitalasset.com/api/scan/v0/open-and-issuing-mining-rounds');
+        if (!roundRes.ok) throw new Error('Failed to fetch round data');
+        const roundData = await roundRes.json();
+        
+        const currentRound = roundData.open_mining_rounds?.[0]?.payload?.round?.number;
+        const amuletPrice = roundData.open_mining_rounds?.[0]?.payload?.amulet_price || 1.0;
+        
+        if (!currentRound) throw new Error('Could not find current round');
+        
+        // Fetch transactions
+        const txRes = await fetch('https://scan.canton.global.digitalasset.com/api/scan/v2/updates?count=100');
+        if (!txRes.ok) throw new Error('Failed to fetch transactions');
+        const txData = await txRes.json();
+        
+        // Parse transactions
+        const partyMap = new Map();
+        
+        txData.updates?.forEach((update: any) => {
+          const tree = update.update?.transaction_tree;
+          if (!tree) return;
+          
+          Object.entries(tree.events_by_id || {}).forEach(([eventId, event]: [string, any]) => {
+            const created = (event as any).created;
+            if (!created) return;
+            
+            const templateId = created.template_id?.entity_name;
+            if (templateId?.includes('Burn') || templateId?.includes('Fee')) {
+              const partyId = tree.roots?.[0] || 'unknown';
+              
+              if (!partyMap.has(partyId)) {
+                partyMap.set(partyId, {
+                  partyId,
+                  totalBurnCC: 0,
+                  totalBurnUSD: 0,
+                  burnEvents: 0,
+                  transactions: []
+                });
+              }
+              
+              const party = partyMap.get(partyId);
+              const burnCC = 1.0;
+              const burnUSD = burnCC * amuletPrice;
+              
+              party.totalBurnCC += burnCC;
+              party.totalBurnUSD += burnUSD;
+              party.burnEvents += 1;
+              
+              party.transactions.push({
+                id: eventId,
+                type: templateId || 'Unknown',
+                burnCC,
+                burnUSD,
+                timestamp: new Date(update.record_time).toLocaleString(),
+                holdingFeeCC: burnCC * 0.25,
+                trafficFeeCC: burnCC * 0.25,
+                transferFeeCC: burnCC * 0.25,
+                outputFeeCC: burnCC * 0.25,
+              });
+            }
+          });
+        });
+        
+        const parties = Array.from(partyMap.values());
+        const totalBurnCC = parties.reduce((sum, p) => sum + p.totalBurnCC, 0);
+        const totalBurnUSD = parties.reduce((sum, p) => sum + p.totalBurnUSD, 0);
+        const totalEvents = parties.reduce((sum, p) => sum + p.burnEvents, 0);
+        
+        setLiveRound({
+          round: currentRound,
+          timestamp: new Date().toLocaleString(),
+          totalBurnCC,
+          totalBurnUSD,
+          burnEvents: totalEvents,
+          parties
+        });
+        
         setLoading(false);
       } catch (err: any) {
         setError(err.message);
