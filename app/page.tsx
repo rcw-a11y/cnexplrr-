@@ -53,7 +53,6 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch real Canton data
   useEffect(() => {
     async function fetchData() {
       try {
@@ -101,13 +100,12 @@ export default function Home() {
       ]}>
         <XAxis dataKey="name" />
         <YAxis />
-        <Tooltip formatter={(value: number) => `${value.toFixed(2)} CC`} />
+        <Tooltip formatter={(value) => value !== undefined ? `${Number(value).toFixed(2)} CC` : '0 CC'} />
         <Bar dataKey="CC" fill="#f59e0b" radius={[6, 6, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
 
-  // Loading state
   if (loading) {
     return (
       <main style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '1100px', margin: '0 auto' }}>
@@ -121,7 +119,6 @@ export default function Home() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <main style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '1100px', margin: '0 auto' }}>
@@ -141,9 +138,9 @@ export default function Home() {
     );
   }
 
-  // Use live data if available
   const roundData = liveRound ? [liveRound] : [];
-  const dailyData: Day[] = []; // We'll populate this once we have enough data// PARTY VIEW (shared by round and day drill-down)
+  const dailyData: Day[] = [];
+
   if ((view === 'round-parties' && selectedRound) || (view === 'day-parties' && selectedDay)) {
     const isRound = view === 'round-parties';
     const source = isRound ? selectedRound! : selectedDay!;
@@ -184,7 +181,7 @@ export default function Home() {
               <BarChart data={chartData}>
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                <Tooltip formatter={(value) => value !== undefined ? `$${Number(value).toLocaleString()}` : '$0'} />
                 <Bar dataKey="USD" fill="#7c3aed" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -221,7 +218,6 @@ export default function Home() {
     );
   }
 
-  // TRANSACTION LIST VIEW
   if ((view === 'round-transactions' || view === 'day-transactions') && selectedParty) {
     const isRound = drillContext === 'round';
     const parentLabel = isRound ? `Round ${selectedRound?.round}` : selectedDay?.date;
@@ -257,7 +253,7 @@ export default function Home() {
               <BarChart data={chartData}>
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                <Tooltip formatter={(value) => value !== undefined ? `$${Number(value).toLocaleString()}` : '$0'} />
                 <Bar dataKey="USD" fill="#059669" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -293,7 +289,6 @@ export default function Home() {
     );
   }
 
-  // TRANSACTION DETAIL VIEW
   if ((view === 'round-detail' || view === 'day-detail') && selectedTx && selectedParty) {
     const isRound = drillContext === 'round';
     const backView = isRound ? 'round-transactions' : 'day-transactions';
@@ -349,7 +344,6 @@ export default function Home() {
     );
   }
 
-  // MAIN VIEW - Live Canton Data
   const roundChartData = roundData.map(r => ({ name: `R${r.round}`, USD: r.totalBurnUSD }));
   const totalRoundUSD = roundData.reduce((s, r) => s + r.totalBurnUSD, 0);
   const totalRoundCC = roundData.reduce((s, r) => s + r.totalBurnCC, 0);
@@ -361,7 +355,6 @@ export default function Home() {
       <p style={{ color: '#888', marginBottom: '8px' }}>Live data from Canton Network MainNet</p>
       <p style={{ color: '#10b981', fontSize: '13px', marginBottom: '40px' }}>● Connected to real-time network data</p>
 
-      {/* LIVE ROUND SECTION */}
       <h2 style={{ fontSize: '20px', marginBottom: '16px', borderBottom: '2px solid #eee', paddingBottom: '8px' }}>Latest Round Activity</h2>
       <div style={{ display: 'flex', gap: '16px', marginBottom: '32px' }}>
         <div style={cardStyle('#f0f7ff')}>
@@ -389,7 +382,7 @@ export default function Home() {
             <BarChart data={roundChartData}>
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+              <Tooltip formatter={(value) => value !== undefined ? `$${Number(value).toLocaleString()}` : '$0'} />
               <Bar dataKey="USD" fill="#0070f3" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
