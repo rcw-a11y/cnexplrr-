@@ -51,97 +51,86 @@ export default function Home() {
   const [drillContext, setDrillContext] = useState<'round' | 'day'>('round');
   const [liveRound, setLiveRound] = useState<Round | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        
-        // Fetch round info
-        const roundRes = await fetch('https://scan.canton.global.digitalasset.com/api/scan/v0/open-and-issuing-mining-rounds');
-        if (!roundRes.ok) throw new Error('Failed to fetch round data');
-        const roundData = await roundRes.json();
-        
-        const currentRound = roundData.open_mining_rounds?.[0]?.payload?.round?.number;
-        const amuletPrice = roundData.open_mining_rounds?.[0]?.payload?.amulet_price || 1.0;
-        
-        if (!currentRound) throw new Error('Could not find current round');
-        
-        // Fetch transactions
-        const txRes = await fetch('https://scan.canton.global.digitalasset.com/api/scan/v2/updates?count=100');
-        if (!txRes.ok) throw new Error('Failed to fetch transactions');
-        const txData = await txRes.json();
-        
-        // Parse transactions
-        const partyMap = new Map();
-        
-        txData.updates?.forEach((update: any) => {
-          const tree = update.update?.transaction_tree;
-          if (!tree) return;
-          
-          Object.entries(tree.events_by_id || {}).forEach(([eventId, event]: [string, any]) => {
-            const created = (event as any).created;
-            if (!created) return;
-            
-            const templateId = created.template_id?.entity_name;
-            if (templateId?.includes('Burn') || templateId?.includes('Fee')) {
-              const partyId = tree.roots?.[0] || 'unknown';
-              
-              if (!partyMap.has(partyId)) {
-                partyMap.set(partyId, {
-                  partyId,
-                  totalBurnCC: 0,
-                  totalBurnUSD: 0,
-                  burnEvents: 0,
-                  transactions: []
-                });
-              }
-              
-              const party = partyMap.get(partyId);
-              const burnCC = 1.0;
-              const burnUSD = burnCC * amuletPrice;
-              
-              party.totalBurnCC += burnCC;
-              party.totalBurnUSD += burnUSD;
-              party.burnEvents += 1;
-              
-              party.transactions.push({
-                id: eventId,
-                type: templateId || 'Unknown',
-                burnCC,
-                burnUSD,
-                timestamp: new Date(update.record_time).toLocaleString(),
-                holdingFeeCC: burnCC * 0.25,
-                trafficFeeCC: burnCC * 0.25,
-                transferFeeCC: burnCC * 0.25,
-                outputFeeCC: burnCC * 0.25,
-              });
-            }
-          });
-        });
-        
-        const parties = Array.from(partyMap.values());
-        const totalBurnCC = parties.reduce((sum, p) => sum + p.totalBurnCC, 0);
-        const totalBurnUSD = parties.reduce((sum, p) => sum + p.totalBurnUSD, 0);
-        const totalEvents = parties.reduce((sum, p) => sum + p.burnEvents, 0);
-        
-        setLiveRound({
-          round: currentRound,
-          timestamp: new Date().toLocaleString(),
-          totalBurnCC,
-          totalBurnUSD,
-          burnEvents: totalEvents,
-          parties
-        });
-        
-        setLoading(false);
-      } catch (err: any) {
-        setError(err.message);
-        setLoading(false);
-      }
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockRound: Round = {
+        round: 1847392,
+        timestamp: new Date().toLocaleString(),
+        totalBurnCC: 5247.89,
+        totalBurnUSD: 864.52,
+        burnEvents: 143,
+        parties: [
+          {
+            partyId: 'Openvector-V1::122033c0ef8b9d4a7c6f5e2d',
+            totalBurnCC: 1533585.30,
+            totalBurnUSD: 252561,
+            burnEvents: 48,
+            transactions: [
+              { id: 'tx_openvector_001', type: 'TrafficPurchase', burnCC: 45234.12, burnUSD: 7450.12, timestamp: new Date(Date.now() - 120000).toLocaleString(), holdingFeeCC: 11308.53, trafficFeeCC: 22617.06, transferFeeCC: 7539.02, outputFeeCC: 3769.51 },
+              { id: 'tx_openvector_002', type: 'HoldingFee', burnCC: 32145.67, burnUSD: 5294.73, timestamp: new Date(Date.now() - 240000).toLocaleString(), holdingFeeCC: 8036.42, trafficFeeCC: 16072.84, transferFeeCC: 5357.61, outputFeeCC: 2678.81 },
+              { id: 'tx_openvector_003', type: 'TransferFee', burnCC: 28934.55, burnUSD: 4765.89, timestamp: new Date(Date.now() - 360000).toLocaleString(), holdingFeeCC: 7233.64, trafficFeeCC: 14467.28, transferFeeCC: 4822.43, outputFeeCC: 2411.21 },
+            ]
+          },
+          {
+            partyId: 'JPM-Native-Deposit::a7b8c9d0e1f2a3b4c5d6',
+            totalBurnCC: 1324330.15,
+            totalBurnUSD: 218100,
+            burnEvents: 42,
+            transactions: [
+              { id: 'tx_jpm_001', type: 'OutputFee', burnCC: 38234.89, burnUSD: 6298.75, timestamp: new Date(Date.now() - 180000).toLocaleString(), holdingFeeCC: 9558.72, trafficFeeCC: 19117.45, transferFeeCC: 6372.48, outputFeeCC: 3186.24 },
+              { id: 'tx_jpm_002', type: 'CNSEntryFee', burnCC: 31245.12, burnUSD: 5145.24, timestamp: new Date(Date.now() - 300000).toLocaleString(), holdingFeeCC: 7811.28, trafficFeeCC: 15622.56, transferFeeCC: 5207.52, outputFeeCC: 2603.76 },
+              { id: 'tx_jpm_003', type: 'TrafficPurchase', burnCC: 27893.44, burnUSD: 4594.17, timestamp: new Date(Date.now() - 420000).toLocaleString(), holdingFeeCC: 6973.36, trafficFeeCC: 13946.72, transferFeeCC: 4648.91, outputFeeCC: 2324.45 },
+            ]
+          },
+          {
+            partyId: 'Goldman-DAX-Settlement::d1e2f3a4b5c6d7e8',
+            totalBurnCC: 965471.20,
+            totalBurnUSD: 159000,
+            burnEvents: 35,
+            transactions: [
+              { id: 'tx_gs_001', type: 'TransferFee', burnCC: 27567.82, burnUSD: 4538.87, timestamp: new Date(Date.now() - 480000).toLocaleString(), holdingFeeCC: 6891.96, trafficFeeCC: 13783.91, transferFeeCC: 4594.64, outputFeeCC: 2297.32 },
+              { id: 'tx_gs_002', type: 'HoldingFee', burnCC: 24123.45, burnUSD: 3972.35, timestamp: new Date(Date.now() - 540000).toLocaleString(), holdingFeeCC: 6030.86, trafficFeeCC: 12061.73, transferFeeCC: 4020.58, outputFeeCC: 2010.29 },
+            ]
+          },
+          {
+            partyId: 'Broadridge-Repoway::e2f3a4b5c6d7e8f9',
+            totalBurnCC: 844025.35,
+            totalBurnUSD: 139000,
+            burnEvents: 31,
+            transactions: [
+              { id: 'tx_broadridge_001', type: 'OutputFee', burnCC: 23456.78, burnUSD: 3863.27, timestamp: new Date(Date.now() - 600000).toLocaleString(), holdingFeeCC: 5864.20, trafficFeeCC: 11728.39, transferFeeCC: 3909.46, outputFeeCC: 1954.73 },
+              { id: 'tx_broadridge_002', type: 'TrafficPurchase', burnCC: 21234.56, burnUSD: 3497.29, timestamp: new Date(Date.now() - 660000).toLocaleString(), holdingFeeCC: 5308.64, trafficFeeCC: 10617.28, transferFeeCC: 3539.09, outputFeeCC: 1769.55 },
+            ]
+          },
+          {
+            partyId: 'DTCC-Settlement::f3a4b5c6d7e8f9a0',
+            totalBurnCC: 723145.67,
+            totalBurnUSD: 119118,
+            burnEvents: 28,
+            transactions: [
+              { id: 'tx_dtcc_001', type: 'HoldingFee', burnCC: 20345.89, burnUSD: 3351.01, timestamp: new Date(Date.now() - 720000).toLocaleString(), holdingFeeCC: 5086.47, trafficFeeCC: 10172.95, transferFeeCC: 3390.98, outputFeeCC: 1695.49 },
+            ]
+          },
+          {
+            partyId: 'BNP-Paribas-Tokenization::a4b5c6d7e8f9a0b1',
+            totalBurnCC: 657238.92,
+            totalBurnUSD: 108268,
+            burnEvents: 24,
+            transactions: [
+              { id: 'tx_bnp_001', type: 'TransferFee', burnCC: 18234.12, burnUSD: 3003.62, timestamp: new Date(Date.now() - 780000).toLocaleString(), holdingFeeCC: 4558.53, trafficFeeCC: 9117.06, transferFeeCC: 3039.02, outputFeeCC: 1519.51 },
+            ]
+          },
+        ]
+      };
+      
+      setLiveRound(mockRound);
+      setLoading(false);
     }
-    fetchData();
+    loadData();
   }, []);
 
   const cardStyle = (color: string) => ({
@@ -172,7 +161,7 @@ useEffect(() => {
       ]}>
         <XAxis dataKey="name" />
         <YAxis />
-        <Tooltip formatter={(value) => value !== undefined ? `${Number(value).toFixed(2)} CC` : '0 CC'} />
+        <Tooltip formatter={(value) => value !== undefined ? `${Number(value).toLocaleString()} CC` : '0 CC'} />
         <Bar dataKey="CC" fill="#f59e0b" radius={[6, 6, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
@@ -182,29 +171,10 @@ useEffect(() => {
     return (
       <main style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '1100px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>Canton Network Fee Burn Explorer</h1>
-        <p style={{ color: '#888', marginBottom: '40px' }}>Loading live data from Canton Network...</p>
+        <p style={{ color: '#888', marginBottom: '40px' }}>Loading demo data...</p>
         <div style={{ textAlign: 'center', padding: '60px' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-          <div style={{ color: '#666' }}>Fetching real-time burn data...</div>
-        </div>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '1100px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>Canton Network Fee Burn Explorer</h1>
-        <p style={{ color: '#888', marginBottom: '40px' }}>Unable to load data</p>
-        <div style={{ background: '#fff5f5', border: '1px solid #feb2b2', borderRadius: '12px', padding: '24px' }}>
-          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c53030', marginBottom: '8px' }}>Error Loading Data</div>
-          <div style={{ color: '#742a2a' }}>{error}</div>
-          <button 
-            onClick={() => window.location.reload()} 
-            style={{ marginTop: '16px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#3182ce', color: 'white', cursor: 'pointer' }}
-          >
-            Retry
-          </button>
+          <div style={{ color: '#666' }}>Preparing realistic Canton Network burn data...</div>
         </div>
       </main>
     );
@@ -219,22 +189,22 @@ useEffect(() => {
     const label = isRound ? `Round ${(source as Round).round}` : (source as Day).date;
     const backLabel = isRound ? 'Rounds' : 'Days';
     const backView = isRound ? 'main' : 'main';
-    const chartData = source.parties.slice(0, 10).map(p => ({ name: p.partyId.slice(-8), USD: p.totalBurnUSD }));
+    const chartData = source.parties.slice(0, 10).map(p => ({ name: p.partyId.split('::')[0], USD: p.totalBurnUSD }));
 
     return (
       <main style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '1100px', margin: '0 auto' }}>
         {backButton(backLabel, () => setView(backView as View))}
-        <h1 style={{ fontSize: '24px', marginBottom: '4px' }}>{label} — Parties</h1>
+        <h1 style={{ fontSize: '24px', marginBottom: '4px' }}>{label} — Fee Generators</h1>
         <p style={{ color: '#888', marginBottom: '32px' }}>Click any party to see their transactions</p>
 
         <div style={{ display: 'flex', gap: '16px', marginBottom: '40px' }}>
           <div style={cardStyle('#f0f7ff')}>
             <div style={{ fontSize: '13px', color: '#888' }}>Total Burn (USD)</div>
-            <div style={{ fontSize: '26px', fontWeight: 'bold' }}>${source.totalBurnUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div style={{ fontSize: '26px', fontWeight: 'bold' }}>${source.totalBurnUSD.toLocaleString()}</div>
           </div>
           <div style={cardStyle('#f0fff4')}>
             <div style={{ fontSize: '13px', color: '#888' }}>Total Burn (CC)</div>
-            <div style={{ fontSize: '26px', fontWeight: 'bold' }}>{source.totalBurnCC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CC</div>
+            <div style={{ fontSize: '26px', fontWeight: 'bold' }}>{source.totalBurnCC.toLocaleString()} CC</div>
           </div>
           <div style={cardStyle('#fff7f0')}>
             <div style={{ fontSize: '13px', color: '#888' }}>Burn Events</div>
@@ -248,10 +218,10 @@ useEffect(() => {
 
         {source.parties.length > 0 && (
           <div style={{ marginBottom: '40px' }}>
-            <h2 style={{ fontSize: '16px', marginBottom: '16px', color: '#444' }}>Top Parties by Burn (USD)</h2>
+            <h2 style={{ fontSize: '16px', marginBottom: '16px', color: '#444' }}>Top Fee Generators by Burn (USD)</h2>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={chartData}>
-                <XAxis dataKey="name" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
                 <YAxis />
                 <Tooltip formatter={(value) => value !== undefined ? `$${Number(value).toLocaleString()}` : '$0'} />
                 <Bar dataKey="USD" fill="#7c3aed" radius={[6, 6, 0, 0]} />
@@ -273,13 +243,13 @@ useEffect(() => {
           <tbody>
             {source.parties.map((p) => (
               <tr key={p.partyId} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={{ ...clickableTd, fontFamily: 'monospace', fontSize: '12px' }} onClick={() => {
+                <td style={{ ...clickableTd, fontFamily: 'monospace', fontSize: '13px' }} onClick={() => {
                   setSelectedParty(p);
                   setDrillContext(isRound ? 'round' : 'day');
                   setView(isRound ? 'round-transactions' : 'day-transactions');
                 }}>{p.partyId}</td>
-                <td style={td}>${p.totalBurnUSD.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                <td style={td}>{p.totalBurnCC.toLocaleString(undefined, { minimumFractionDigits: 2 })} CC</td>
+                <td style={td}>${p.totalBurnUSD.toLocaleString()}</td>
+                <td style={td}>{p.totalBurnCC.toLocaleString()} CC</td>
                 <td style={td}>{p.burnEvents.toLocaleString()}</td>
                 <td style={td}>{((p.totalBurnUSD / source.totalBurnUSD) * 100).toFixed(1)}%</td>
               </tr>
@@ -294,7 +264,7 @@ useEffect(() => {
     const isRound = drillContext === 'round';
     const parentLabel = isRound ? `Round ${selectedRound?.round}` : selectedDay?.date;
     const backView = isRound ? 'round-parties' : 'day-parties';
-    const chartData = selectedParty.transactions.slice(0, 10).map(t => ({ name: t.id, USD: t.burnUSD }));
+    const chartData = selectedParty.transactions.slice(0, 10).map((t, i) => ({ name: `TX ${i+1}`, USD: t.burnUSD }));
 
     return (
       <main style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '1100px', margin: '0 auto' }}>
@@ -306,11 +276,11 @@ useEffect(() => {
         <div style={{ display: 'flex', gap: '16px', marginBottom: '40px' }}>
           <div style={cardStyle('#f0f7ff')}>
             <div style={{ fontSize: '13px', color: '#888' }}>Party Total (USD)</div>
-            <div style={{ fontSize: '26px', fontWeight: 'bold' }}>${selectedParty.totalBurnUSD.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+            <div style={{ fontSize: '26px', fontWeight: 'bold' }}>${selectedParty.totalBurnUSD.toLocaleString()}</div>
           </div>
           <div style={cardStyle('#f0fff4')}>
             <div style={{ fontSize: '13px', color: '#888' }}>Party Total (CC)</div>
-            <div style={{ fontSize: '26px', fontWeight: 'bold' }}>{selectedParty.totalBurnCC.toLocaleString(undefined, { minimumFractionDigits: 2 })} CC</div>
+            <div style={{ fontSize: '26px', fontWeight: 'bold' }}>{selectedParty.totalBurnCC.toLocaleString()} CC</div>
           </div>
           <div style={cardStyle('#fff7f0')}>
             <div style={{ fontSize: '13px', color: '#888' }}>Burn Events</div>
@@ -350,8 +320,8 @@ useEffect(() => {
                   setView(isRound ? 'round-detail' : 'day-detail');
                 }}>{t.id}</td>
                 <td style={td}>{t.type}</td>
-                <td style={td}>${t.burnUSD.toFixed(2)}</td>
-                <td style={td}>{t.burnCC.toFixed(2)} CC</td>
+                <td style={td}>${t.burnUSD.toLocaleString()}</td>
+                <td style={td}>{t.burnCC.toLocaleString()} CC</td>
                 <td style={td}>{t.timestamp}</td>
               </tr>
             ))}
@@ -369,7 +339,7 @@ useEffect(() => {
       <main style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '700px', margin: '0 auto' }}>
         {backButton('Transactions', () => setView(backView as View))}
         <h1 style={{ fontSize: '24px', marginBottom: '4px' }}>Transaction Detail</h1>
-        <p style={{ color: '#888', marginBottom: '32px' }}>Full breakdown of all publicly available fee data</p>
+        <p style={{ color: '#888', marginBottom: '32px' }}>Full breakdown of fee burn data</p>
 
         <div style={{ background: '#f9f9f9', borderRadius: '12px', padding: '28px', marginBottom: '32px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -378,35 +348,35 @@ useEffect(() => {
               ['Type', selectedTx.type],
               ['Context', isRound ? `Round ${selectedRound?.round}` : selectedDay?.date],
               ['Timestamp', selectedTx.timestamp],
-              ['Party ID', selectedParty.partyId],
-              ['Total Burn (USD)', `$${selectedTx.burnUSD.toFixed(2)}`],
-              ['Total Burn (CC)', `${selectedTx.burnCC.toFixed(2)} CC`],
+              ['Party ID', selectedParty.partyId.split('::')[0]],
+              ['Total Burn (USD)', `$${selectedTx.burnUSD.toLocaleString()}`],
+              ['Total Burn (CC)', `${selectedTx.burnCC.toLocaleString()} CC`],
             ].map(([label, value]) => (
               <div key={label as string}>
                 <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>{label}</div>
-                <div style={{ fontSize: '15px', fontWeight: '500', fontFamily: label === 'Transaction ID' || label === 'Party ID' ? 'monospace' : 'sans-serif' }}>{value}</div>
+                <div style={{ fontSize: '15px', fontWeight: '500', fontFamily: label === 'Transaction ID' || label === 'Party ID' ? 'monospace' : 'sans-serif', wordBreak: 'break-all' }}>{value}</div>
               </div>
             ))}
           </div>
         </div>
 
         <h2 style={{ fontSize: '16px', marginBottom: '16px', color: '#444' }}>Fee Breakdown</h2>
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '32px' }}>
-          <div style={cardStyle('#f0f7ff')}>
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
+          <div style={{ ...cardStyle('#f0f7ff'), minWidth: '180px' }}>
             <div style={{ fontSize: '12px', color: '#888' }}>Holding Fee</div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{selectedTx.holdingFeeCC.toFixed(2)} CC</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{selectedTx.holdingFeeCC.toLocaleString()} CC</div>
           </div>
-          <div style={cardStyle('#f0fff4')}>
+          <div style={{ ...cardStyle('#f0fff4'), minWidth: '180px' }}>
             <div style={{ fontSize: '12px', color: '#888' }}>Traffic Fee</div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{selectedTx.trafficFeeCC.toFixed(2)} CC</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{selectedTx.trafficFeeCC.toLocaleString()} CC</div>
           </div>
-          <div style={cardStyle('#fff7f0')}>
+          <div style={{ ...cardStyle('#fff7f0'), minWidth: '180px' }}>
             <div style={{ fontSize: '12px', color: '#888' }}>Transfer Fee</div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{selectedTx.transferFeeCC.toFixed(2)} CC</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{selectedTx.transferFeeCC.toLocaleString()} CC</div>
           </div>
-          <div style={cardStyle('#fdf0ff')}>
+          <div style={{ ...cardStyle('#fdf0ff'), minWidth: '180px' }}>
             <div style={{ fontSize: '12px', color: '#888' }}>Output Fee</div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{selectedTx.outputFeeCC.toFixed(2)} CC</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{selectedTx.outputFeeCC.toLocaleString()} CC</div>
           </div>
         </div>
 
@@ -416,7 +386,7 @@ useEffect(() => {
     );
   }
 
-  const roundChartData = roundData.map(r => ({ name: `R${r.round}`, USD: r.totalBurnUSD }));
+  const roundChartData = roundData.map(r => ({ name: `Round ${r.round}`, USD: r.totalBurnUSD }));
   const totalRoundUSD = roundData.reduce((s, r) => s + r.totalBurnUSD, 0);
   const totalRoundCC = roundData.reduce((s, r) => s + r.totalBurnCC, 0);
   const totalRoundEvents = roundData.reduce((s, r) => s + r.burnEvents, 0);
@@ -424,42 +394,28 @@ useEffect(() => {
   return (
     <main style={{ fontFamily: 'sans-serif', padding: '40px', maxWidth: '1100px', margin: '0 auto' }}>
       <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>Canton Network Fee Burn Explorer</h1>
-      <p style={{ color: '#888', marginBottom: '8px' }}>Live data from Canton Network MainNet</p>
-      <p style={{ color: '#10b981', fontSize: '13px', marginBottom: '40px' }}>● Connected to real-time network data</p>
+      <p style={{ color: '#888', marginBottom: '8px' }}>Demo data showing realistic Canton Network burn metrics</p>
+      <p style={{ color: '#f59e0b', fontSize: '13px', marginBottom: '40px' }}>⚠️ Using demo data - Real-time API integration in progress</p>
 
       <h2 style={{ fontSize: '20px', marginBottom: '16px', borderBottom: '2px solid #eee', paddingBottom: '8px' }}>Latest Round Activity</h2>
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '32px' }}>
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
         <div style={cardStyle('#f0f7ff')}>
           <div style={{ fontSize: '13px', color: '#888' }}>Total Burned (USD)</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold' }}>${totalRoundUSD.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold' }}>${totalRoundUSD.toLocaleString()}</div>
         </div>
         <div style={cardStyle('#f0fff4')}>
           <div style={{ fontSize: '13px', color: '#888' }}>Total Burned (CC)</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{totalRoundCC.toLocaleString(undefined, { minimumFractionDigits: 2 })} CC</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{totalRoundCC.toLocaleString()} CC</div>
         </div>
         <div style={cardStyle('#fff7f0')}>
           <div style={{ fontSize: '13px', color: '#888' }}>Burn Events</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{totalRoundEvents.toLocaleString()}</div>
         </div>
         <div style={cardStyle('#fdf0ff')}>
-          <div style={{ fontSize: '13px', color: '#888' }}>Active Parties</div>
+          <div style={{ fontSize: '13px', color: '#888' }}>Fee Generators</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{liveRound?.parties.length ?? 0}</div>
         </div>
       </div>
-
-      {roundData.length > 0 && roundData[0].parties.length > 0 && (
-        <div style={{ marginBottom: '32px' }}>
-          <h3 style={{ fontSize: '15px', marginBottom: '12px', color: '#444' }}>Recent Burn Activity (USD)</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={roundChartData}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip formatter={(value) => value !== undefined ? `$${Number(value).toLocaleString()}` : '$0'} />
-              <Bar dataKey="USD" fill="#0070f3" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
 
       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '60px' }}>
         <thead>
@@ -477,8 +433,8 @@ useEffect(() => {
             <tr key={r.round} style={{ borderBottom: '1px solid #eee' }}>
               <td style={clickableTd} onClick={() => { setSelectedRound(r); setView('round-parties'); }}>{r.round}</td>
               <td style={td}>{r.timestamp}</td>
-              <td style={td}>${r.totalBurnUSD.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-              <td style={td}>{r.totalBurnCC.toLocaleString(undefined, { minimumFractionDigits: 2 })} CC</td>
+              <td style={td}>${r.totalBurnUSD.toLocaleString()}</td>
+              <td style={td}>{r.totalBurnCC.toLocaleString()} CC</td>
               <td style={td}>{r.burnEvents.toLocaleString()}</td>
               <td style={td}>{r.parties.length}</td>
             </tr>
